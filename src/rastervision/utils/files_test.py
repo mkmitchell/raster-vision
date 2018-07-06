@@ -5,12 +5,14 @@ import unittest
 import boto3
 from moto import mock_s3
 
-from rastervision.utils.files import file_to_str
+from rastervision.utils.files import file_to_str, NotFoundException
 
 
-class TestFiles(unittest.TestCase):
-    @mock_s3
+class TestFileUtils(unittest.TestCase):
     def setUp(self):
+        self.mock_s3 = mock_s3()
+        self.mock_s3.start()
+
         # Save temp file.
         self.file_name = 'hello.txt'
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -24,13 +26,31 @@ class TestFiles(unittest.TestCase):
         self.bucket = 'mock_bucket'
         self.s3.create_bucket(Bucket=self.bucket)
         self.s3_path = 's3://{}/{}'.format(self.bucket, self.file_name)
-        self.s3.meta.client.upload_file(
+        self.s3.upload_file(
             self.file_path, self.bucket, self.file_name)
 
-    def test_file_to_str(self):
-        s3_str = file_to_str(self.s3_path)
-        self.assertEqual(s3_str, self.file_contents)
+    def tearDown(self):
+        self.temp_dir.cleanup()
+        self.mock_s3.stop()
+
+    def test_file_to_str_s3(self):
+        str = file_to_str(self.s3_path)
+        self.assertEqual(str, self.file_contents)
+
+    def test_file_to_str_local(self):
+        str = file_to_str(self.file_path)
+        self.assertEqual(str, self.file_contents)
+
+    def test_file_to_str_wrong_s3(self):
+        wrong_path = 's3://{}/{}'.format(self.bucket, 'x.txt')
+        with self.assertRaises(NotFoundException):
+            file_to_str(wrong_path)
+
+    def test_file_to_str_wrong_local(self):
+        wrong_path = '/wrongpath/x.txt'
+        with self.assertRaises(NotFoundException):
+            file_to_str(wrong_path)
 
 
 if __name__ == '__main__':
-    unit
+    unittest.main()

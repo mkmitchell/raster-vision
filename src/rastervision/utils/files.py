@@ -98,11 +98,16 @@ def file_to_str(file_uri):
     parsed_uri = urlparse(file_uri)
     if parsed_uri.scheme == 's3':
         with io.BytesIO() as file_buffer:
-            s3 = boto3.client('s3')
-            s3.download_fileobj(
-                parsed_uri.netloc, parsed_uri.path[1:], file_buffer)
-            return file_buffer.getvalue().decode('utf-8')
+            try:
+                s3 = boto3.client('s3')
+                s3.download_fileobj(
+                    parsed_uri.netloc, parsed_uri.path[1:], file_buffer)
+                return file_buffer.getvalue().decode('utf-8')
+            except botocore.exceptions.ClientError:
+                raise NotFoundException('Could not find {}'.format(file_uri))
     else:
+        if not os.path.isfile(file_uri):
+            raise NotFoundException('Could not find {}'.format(file_uri))
         with open(file_uri, 'r') as file_buffer:
             return file_buffer.read()
 
