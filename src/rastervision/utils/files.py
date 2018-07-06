@@ -75,8 +75,6 @@ def download_if_needed(uri, download_dir, must_exist=True):
 
     parsed_uri = urlparse(uri)
     if parsed_uri.scheme == 's3':
-
-        # is it a raster?
         vsis3_path = _is_raster(uri, s3_test=True)
         if vsis3_path:
             return vsis3_path
